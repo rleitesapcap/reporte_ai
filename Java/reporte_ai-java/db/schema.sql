@@ -67,9 +67,7 @@ CREATE TABLE categories (
     icon_url VARCHAR(500),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    ORDER BY name
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_categories_is_active ON categories(is_active);
@@ -98,7 +96,7 @@ CREATE INDEX idx_sub_categories_is_active ON sub_categories(is_active);
 
 CREATE TABLE occurrences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     category_id UUID NOT NULL REFERENCES categories(id),
     sub_category_id UUID REFERENCES sub_categories(id),
     
