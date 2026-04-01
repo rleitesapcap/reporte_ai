@@ -4,7 +4,6 @@ import opus.social.app.reporteai.application.dto.CreateEmployeeRequest;
 import opus.social.app.reporteai.application.dto.UpdateEmployeeRequest;
 import opus.social.app.reporteai.application.dto.EmployeeResponse;
 import opus.social.app.reporteai.domain.entity.Employee;
-import opus.social.app.reporteai.domain.entity.EmployeeBuilder;
 import opus.social.app.reporteai.domain.exception.EmployeeNotFoundException;
 import opus.social.app.reporteai.domain.port.EmployeeRepositoryPort;
 import opus.social.app.reporteai.domain.strategy.validation.ValidationContext;
@@ -17,7 +16,7 @@ import java.util.stream.Collectors;
 /**
  * Serviço de Aplicação para Funcionários
  * Contém os casos de uso (use cases) de funcionários
- * Orquestra o domínio e utiliza o repositório (port) para persistência
+ * Orquestra o domínio e utiliza o repositório (port) para persistência asasasas
  */
 @Service
 public class EmployeeApplicationService {
