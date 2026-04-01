@@ -4,7 +4,7 @@ Segue Aplicação completa de gestão de funcionários desenvolvida com **Spring
 
 ## Arquitetura Hexagonal
 
-A arquitetura hexagonal (também conhecida como Ports & Adapters) separa a lógica de negócio das dependências técnicas:
+sdsdaffasfasdas A arquitetura hexagonal (também conhecida como Ports & Adapters) separa a lógica de negócio das dependências técnicas:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
