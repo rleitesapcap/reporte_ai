@@ -7,6 +7,7 @@ F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-jav
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\main\java\opus\social\app\reporteai\domain\entity\EmployeeBuilder.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\main\java\opus\social\app\reporteai\domain\strategy\validation\CpfValidationStrategy.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\main\java\opus\social\app\reporteai\application\dto\CreateEmployeeRequest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\main\java\opus\social\app\reporteai\adapters\config\DatabaseInitializerConfig.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\main\java\opus\social\app\reporteai\domain\entity\Employee.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\main\java\opus\social\app\reporteai\domain\factory\exception\BusinessExceptionHandlerStrategy.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\main\java\opus\social\app\reporteai\infrastructure\persistence\adapter\EmployeeRepositoryAdapter.java

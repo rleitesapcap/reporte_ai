@@ -15,6 +15,7 @@ opus\social\app\reporteai\infrastructure\persistence\entity\EmployeeJpaEntity.cl
 opus\social\app\reporteai\adapters\config\OpenApiConfig.class
 opus\social\app\reporteai\domain\exception\DomainException.class
 opus\social\app\reporteai\domain\factory\exception\BusinessExceptionHandlerStrategy.class
+opus\social\app\reporteai\adapters\config\DatabaseInitializerConfig.class
 opus\social\app\reporteai\application\dto\CreateEmployeeRequest.class
 opus\social\app\reporteai\domain\exception\BusinessException.class
 opus\social\app\reporteai\domain\factory\exception\ExceptionHandlerStrategy.class

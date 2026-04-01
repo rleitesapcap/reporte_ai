@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: opus.social.app.reporteai.adapters.http.controller.EmployeeControllerTest
--------------------------------------------------------------------------------
-Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.512 s -- in opus.social.app.reporteai.adapters.http.controller.EmployeeControllerTest
