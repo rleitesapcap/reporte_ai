@@ -1,0 +1,3 @@
+opus\social\app\reporteai\adapters\http\controller\EmployeeControllerTest.class
+opus\social\app\reporteai\infrastructure\persistence\adapter\EmployeeRepositoryAdapterTest.class
+opus\social\app\reporteai\application\service\EmployeeApplicationServiceTest.class
