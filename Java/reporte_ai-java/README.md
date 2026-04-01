@@ -1,6 +1,6 @@
 # Employee Management Application
 
-Aplicação completa de gestão de funcionários desenvolvida com **Spring Boot**, seguindo a arquitetura **Hexagonal (Ports & Adapters)** e os princípios de **Clean Code**.
+Segue Aplicação completa de gestão de funcionários desenvolvida com **Spring Boot**, seguindo a arquitetura **Hexagonal (Ports & Adapters)** e os princípios de **Clean Code**.
 
 ## Arquitetura Hexagonal
 
