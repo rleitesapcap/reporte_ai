@@ -4,28 +4,32 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import java.util.List;
 
-/**
- * Configuração do OpenAPI (Swagger) para documentação da API REST
- */
 @Configuration
 public class OpenApiConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
+            .servers(List.of(
+                new Server().url("http://localhost:8080").description("Development"),
+                new Server().url("http://localhost:9090").description("Local")
+            ))
             .info(new Info()
-                .title("API de Gestão de Funcionários")
-                .description("Aplicação completa de gestão de funcionários com arquitetura hexagonal")
+                .title("Reporte AI API")
                 .version("1.0.0")
+                .description("API REST para a plataforma Reporte AI - Sistema inteligente de mapeamento de problemas urbanos e rurais")
                 .contact(new Contact()
-                    .name("Seu Nome")
-                    .email("seu.email@example.com")
-                    .url("https://example.com"))
+                    .name("Reporte AI Team")
+                    .email("contact@reporteai.com")
+                    .url("https://reporteai.com"))
                 .license(new License()
                     .name("Apache 2.0")
-                    .url("https://www.apache.org/licenses/LICENSE-2.0.html")));
+                    .url("https://www.apache.org/licenses/LICENSE-2.0.html"))
+                .termsOfService("https://reporteai.com/terms"));
     }
 }
