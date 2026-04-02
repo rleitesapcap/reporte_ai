@@ -1,0 +1,43 @@
+package opus.social.app.reporteai.application.dto;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public class UserConsentResponse {
+    private UUID id;
+    private UUID userId;
+    private String consentType;
+    private Boolean accepted;
+    private LocalDateTime consentDate;
+    private String documentVersion;
+
+    public UserConsentResponse() {}
+
+    public UserConsentResponse(UUID id, UUID userId, String consentType, Boolean accepted,
+            LocalDateTime consentDate, String documentVersion) {
+        this.id = id;
+        this.userId = userId;
+        this.consentType = consentType;
+        this.accepted = accepted;
+        this.consentDate = consentDate;
+        this.documentVersion = documentVersion;
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+
+    public String getConsentType() { return consentType; }
+    public void setConsentType(String consentType) { this.consentType = consentType; }
+
+    public Boolean getAccepted() { return accepted; }
+    public void setAccepted(Boolean accepted) { this.accepted = accepted; }
+
+    public LocalDateTime getConsentDate() { return consentDate; }
+    public void setConsentDate(LocalDateTime consentDate) { this.consentDate = consentDate; }
+
+    public String getDocumentVersion() { return documentVersion; }
+    public void setDocumentVersion(String documentVersion) { this.documentVersion = documentVersion; }
+}
