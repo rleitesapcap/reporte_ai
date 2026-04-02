@@ -16,7 +16,7 @@ public class UserCreateRequest {
     }
 
     public UserCreateRequest(String phoneNumber, String name, String email) {
-        this.phoneNumber = phoneNumber;
+        this.phoneNumber = phoneNumber; 
         this.name = name;
         this.email = email;
     }
