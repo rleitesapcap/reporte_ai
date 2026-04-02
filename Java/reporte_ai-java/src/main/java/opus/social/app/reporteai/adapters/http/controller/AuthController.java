@@ -1,6 +1,12 @@
 package opus.social.app.reporteai.adapters.http.controller;
 
 import opus.social.app.reporteai.adapters.security.JwtTokenProvider;
+import opus.social.app.reporteai.application.dto.RegisterRequest;
+import opus.social.app.reporteai.application.service.AuthUserApplicationService;
+import opus.social.app.reporteai.application.service.TokenBlacklistService;
+import opus.social.app.reporteai.infrastructure.persistence.entity.AuthUserJpaEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,10 +32,57 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
+    private final AuthUserApplicationService authUserService;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtTokenProvider tokenProvider) {
+    public AuthController(
+            AuthenticationManager authenticationManager,
+            JwtTokenProvider tokenProvider,
+            AuthUserApplicationService authUserService,
+            TokenBlacklistService tokenBlacklistService) {
         this.authenticationManager = authenticationManager;
         this.tokenProvider = tokenProvider;
+        this.authUserService = authUserService;
+        this.tokenBlacklistService = tokenBlacklistService;
+    }
+
+    /**
+     * Registrar novo usuário
+     */
+    @PostMapping("/register")
+    @Operation(summary = "Registrar novo usuário", description = "Cria uma nova conta de usuário")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Usuário registrado com sucesso"),
+        @ApiResponse(responseCode = "400", description = "Dados inválidos ou username/email já existem"),
+        @ApiResponse(responseCode = "409", description = "Username ou email já registrado")
+    })
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        try {
+            // Validar senhas
+            if (!registerRequest.getPassword().equals(registerRequest.getPasswordConfirm())) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "PASSWORDS_DONT_MATCH");
+                errorResponse.put("message", "Senhas não correspondem");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            }
+
+            // Registrar usuário
+            AuthUserJpaEntity newUser = authUserService.registerUser(registerRequest);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "SUCCESS");
+            response.put("message", "Usuário registrado com sucesso");
+            response.put("userId", newUser.getId());
+            response.put("username", newUser.getUsername());
+            response.put("email", newUser.getEmail());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "REGISTRATION_FAILED");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+        }
     }
 
     /**
@@ -51,6 +104,9 @@ public class AuthController {
                 )
             );
 
+            // Registrar login bem-sucedido no banco
+            authUserService.recordSuccessfulLogin(loginRequest.getUsername());
+
             String jwt = tokenProvider.generateToken(authentication);
             String refreshToken = tokenProvider.generateRefreshToken(loginRequest.getUsername());
 
@@ -63,6 +119,13 @@ public class AuthController {
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            // Registrar tentativa falhada
+            try {
+                authUserService.recordFailedLoginAttempt(loginRequest.getUsername());
+            } catch (Exception ignored) {
+                // Ignorar se usuário não existe
+            }
+
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", "AUTHENTICATION_FAILED");
             errorResponse.put("message", "Credenciais inválidas");
@@ -128,6 +191,52 @@ public class AuthController {
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("isValid", false);
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+
+    /**
+     * Logout - revoga o token atual
+     */
+    @PostMapping("/logout")
+    @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Logout", description = "Realiza logout e revoga o token JWT")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Logout realizado com sucesso"),
+        @ApiResponse(responseCode = "401", description = "Usuário não autenticado")
+    })
+    public ResponseEntity<?> logout(@RequestHeader("Authorization") String bearerToken) {
+        try {
+            if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+                String token = bearerToken.substring(7);
+
+                // Validar e extrair informações do token
+                if (tokenProvider.validateToken(token)) {
+                    String username = tokenProvider.getUsernameFromToken(token);
+                    AuthUserJpaEntity user = authUserService.getUserByUsername(username);
+
+                    // Adicionar token ao blacklist
+                    tokenBlacklistService.blacklistTokenForLogout(
+                        token,
+                        user.getId(),
+                        "ACCESS",
+                        tokenProvider.getExpirationDateFromToken(token).toLocalDateTime()
+                    );
+                }
+            }
+
+            // Limpar contexto de segurança
+            SecurityContextHolder.clearContext();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "SUCCESS");
+            response.put("message", "Logout realizado com sucesso");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "LOGOUT_FAILED");
             errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }

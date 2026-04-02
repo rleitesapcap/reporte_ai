@@ -19,6 +19,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Configuração de segurança com OAuth2 e JWT
@@ -33,6 +34,9 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @Autowired(required = false)
+    private RateLimitingFilter rateLimitingFilter;
 
     public SecurityConfig(JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
@@ -110,6 +114,11 @@ public class SecurityConfig {
             .and()
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        // Adicionar rate limiting filter se disponível
+        if (rateLimitingFilter != null) {
+            http.addFilterBefore(rateLimitingFilter, JwtAuthenticationFilter.class);
+        }
 
         return http.build();
     }

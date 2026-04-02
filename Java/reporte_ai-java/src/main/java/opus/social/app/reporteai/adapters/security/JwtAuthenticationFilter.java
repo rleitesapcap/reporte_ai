@@ -1,5 +1,6 @@
 package opus.social.app.reporteai.adapters.security;
 
+import opus.social.app.reporteai.application.service.TokenBlacklistService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,6 +28,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private UserDetailsService userDetailsService;
 
+    @Autowired(required = false)
+    private TokenBlacklistService tokenBlacklistService;
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -36,13 +40,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
+                // Verificar se o token está no blacklist
+                if (tokenBlacklistService != null && tokenBlacklistService.isTokenBlacklisted(jwt)) {
+                    logger.warn("Token revogado detectado");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 String username = tokenProvider.getUsernameFromToken(jwt);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                UsernamePasswordAuthenticationToken authentication = 
+                UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
-                        userDetails, 
-                        null, 
+                        userDetails,
+                        null,
                         userDetails.getAuthorities()
                     );
 
