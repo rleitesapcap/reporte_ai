@@ -1,7 +1,12 @@
+app:
+  jwtSecret: mySecureSecretKeyForJWTTokenGenerationAndValidation123456789SuperSecure
+  jwtExpirationInMs: 86400000  # 24 horas
+  jwtRefreshExpirationInMs: 604800000  # 7 dias
+
 spring:
   application:
     name: reporteai
-  
+
   jpa:
     hibernate:
       ddl-auto: validate
