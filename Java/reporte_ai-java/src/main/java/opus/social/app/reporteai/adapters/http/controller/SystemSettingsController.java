@@ -46,9 +46,9 @@ public class SystemSettingsController {
     public ResponseEntity<SystemSettingsResponse> saveSetting(
             @Valid @RequestBody SystemSettingsCreateRequest request) {
         SystemSettings setting = settingsService.saveSetting(
-            request.getKey(),
-            request.getValue(),
-            request.getType(),
+            request.getSettingKey(),
+            request.getSettingValue(),
+            request.getSettingType(),
             request.getDescription()
         );
         return ResponseEntity.status(HttpStatus.CREATED)

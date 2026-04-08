@@ -1,11 +1,6 @@
 package opus.social.app.reporteai.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.util.UUID;
 
 /**
@@ -13,12 +8,8 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "auth_roles")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class AuthRoleJpaEntity {
-    
+
     @Id
     @Column(name = "id", columnDefinition = "uuid")
     private UUID id;
@@ -31,4 +22,41 @@ public class AuthRoleJpaEntity {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
+
+    public AuthRoleJpaEntity() {}
+
+    public static Builder builder() { return new Builder(); }
+
+    public static class Builder {
+        private UUID id;
+        private String roleName;
+        private String description;
+        private Boolean isActive;
+
+        public Builder id(UUID id) { this.id = id; return this; }
+        public Builder roleName(String roleName) { this.roleName = roleName; return this; }
+        public Builder description(String description) { this.description = description; return this; }
+        public Builder isActive(Boolean isActive) { this.isActive = isActive; return this; }
+
+        public AuthRoleJpaEntity build() {
+            AuthRoleJpaEntity e = new AuthRoleJpaEntity();
+            e.id = this.id;
+            e.roleName = this.roleName;
+            e.description = this.description;
+            e.isActive = this.isActive;
+            return e;
+        }
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public String getRoleName() { return roleName; }
+    public void setRoleName(String roleName) { this.roleName = roleName; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
 }

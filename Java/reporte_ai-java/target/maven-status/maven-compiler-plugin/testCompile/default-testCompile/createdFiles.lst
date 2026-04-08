@@ -1,3 +1,7 @@
-opus\social\app\reporteai\adapters\http\controller\EmployeeControllerTest.class
+opus\social\app\reporteai\application\service\AuthUserApplicationServiceTest.class
 opus\social\app\reporteai\infrastructure\persistence\adapter\EmployeeRepositoryAdapterTest.class
+opus\social\app\reporteai\adapters\http\controller\AuthControllerIntegrationTest.class
+opus\social\app\reporteai\application\service\UserApplicationServiceTest.class
+opus\social\app\reporteai\adapters\http\controller\EmployeeControllerTest.class
+opus\social\app\reporteai\application\service\OccurrenceApplicationServiceTest.class
 opus\social\app\reporteai\application\service\EmployeeApplicationServiceTest.class

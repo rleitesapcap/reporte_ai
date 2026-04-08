@@ -53,8 +53,11 @@ public class OccurrenceApplicationServiceTest {
         UUID occurrenceId = UUID.randomUUID();
         Occurrence mockOccurrence = Occurrence.builder()
             .id(occurrenceId)
+            .categoryId(UUID.randomUUID())
+            .protocolId("CAP-2024-000001")
             .description("Test")
             .severity(2)
+            .frequency(1)
             .build();
 
         when(occurrenceRepository.findById(occurrenceId)).thenReturn(Optional.of(mockOccurrence));
@@ -79,6 +82,11 @@ public class OccurrenceApplicationServiceTest {
         String status = "validated";
         Occurrence mockOccurrence = Occurrence.builder()
             .id(UUID.randomUUID())
+            .categoryId(UUID.randomUUID())
+            .protocolId("CAP-2024-000001")
+            .description("Test occurrence")
+            .severity(3)
+            .frequency(1)
             .status(status)
             .build();
 
@@ -99,6 +107,11 @@ public class OccurrenceApplicationServiceTest {
         
         Occurrence mockOccurrence = Occurrence.builder()
             .id(occurrenceId)
+            .categoryId(UUID.randomUUID())
+            .protocolId("CAP-2024-000001")
+            .description("Test occurrence")
+            .severity(3)
+            .frequency(1)
             .status("validated")
             .build();
 

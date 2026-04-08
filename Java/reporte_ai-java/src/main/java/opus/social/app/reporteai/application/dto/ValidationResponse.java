@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 public class ValidationResponse {
     private UUID id;
     private UUID occurrenceId;
+    private UUID validatorUserId;
     private String validationType;
     private String result;
     private String reason;
@@ -15,10 +16,11 @@ public class ValidationResponse {
 
     public ValidationResponse() {}
 
-    public ValidationResponse(UUID id, UUID occurrenceId, String validationType, String result,
-            String reason, BigDecimal confidence, LocalDateTime validatedAt) {
+    public ValidationResponse(UUID id, UUID occurrenceId, UUID validatorUserId, String validationType,
+            String result, String reason, BigDecimal confidence, LocalDateTime validatedAt) {
         this.id = id;
         this.occurrenceId = occurrenceId;
+        this.validatorUserId = validatorUserId;
         this.validationType = validationType;
         this.result = result;
         this.reason = reason;
@@ -31,6 +33,9 @@ public class ValidationResponse {
 
     public UUID getOccurrenceId() { return occurrenceId; }
     public void setOccurrenceId(UUID occurrenceId) { this.occurrenceId = occurrenceId; }
+
+    public UUID getValidatorUserId() { return validatorUserId; }
+    public void setValidatorUserId(UUID validatorUserId) { this.validatorUserId = validatorUserId; }
 
     public String getValidationType() { return validationType; }
     public void setValidationType(String validationType) { this.validationType = validationType; }

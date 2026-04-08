@@ -90,13 +90,13 @@ public class DeduplicationRecordController {
         return new DeduplicationRecordResponse(
             record.getId(),
             record.getMainOccurrenceId(),
-            record.getDuplicateId(),
-            record.getSimilarity(),
-            record.getDistance(),
-            record.getTimeDifference(),
-            record.getManualReview(),
-            record.getMethod(),
-            record.getRecordedAt()
+            record.getDuplicateOccurrenceId(),
+            record.getSimilarityScore(),
+            record.getGeographicDistanceMeters(),
+            record.getTimeDifferenceMinutes(),
+            record.getDedupReason(),
+            record.getDedupMethod(),
+            record.getCreatedAt()
         );
     }
 }

@@ -18,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -28,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -43,6 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     BusinessExceptionHandlerStrategy.class
 })
 @DisplayName("EmployeeController Tests")
+@WithMockUser(roles = {"USER", "ADMIN"})
 class EmployeeControllerTest {
 
     @Autowired
@@ -91,6 +94,7 @@ class EmployeeControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/employees")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validRequest)))
             .andExpect(status().isCreated())
@@ -114,6 +118,7 @@ class EmployeeControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/employees")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidRequest)))
             .andExpect(status().isBadRequest());
@@ -183,7 +188,8 @@ class EmployeeControllerTest {
     @DisplayName("Deve deletar funcionário com status 204")
     void testDeleteEmployeeSuccess() throws Exception {
         // Act & Assert
-        mockMvc.perform(delete("/api/v1/employees/1"))
+        mockMvc.perform(delete("/api/v1/employees/1")
+                .with(csrf()))
             .andExpect(status().isNoContent());
     }
 
@@ -196,6 +202,7 @@ class EmployeeControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/employees/1/reactivate")
+                .with(csrf())
                 .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.active").value(true));

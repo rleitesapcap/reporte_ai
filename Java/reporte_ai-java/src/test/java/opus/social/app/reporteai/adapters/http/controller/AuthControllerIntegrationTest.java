@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Testes de integração para AuthController
  */
-@SpringBootTest
+@SpringBootTest(properties = {"spring.flyway.validate-on-migrate=false"})
 @AutoConfigureMockMvc
 class AuthControllerIntegrationTest {
 

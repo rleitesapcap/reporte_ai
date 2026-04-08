@@ -92,11 +92,11 @@ public class SpatialClusterController {
             cluster.getNeighborhood(),
             cluster.getCenterLatitude(),
             cluster.getCenterLongitude(),
-            cluster.getRadius(),
+            cluster.getRadiusMeters(),
             cluster.getOccurrenceCount(),
-            cluster.getAverageTrustScore(),
-            cluster.getMinimumDistance(),
-            cluster.getMaximumDistance(),
+            cluster.getDensityScore(),
+            cluster.getSeverityAvg(),
+            cluster.getPriorityScoreAvg(),
             cluster.getCreatedAt(),
             cluster.getUpdatedAt()
         );

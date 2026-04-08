@@ -10,17 +10,19 @@ public class UserConsentResponse {
     private Boolean accepted;
     private LocalDateTime consentDate;
     private String documentVersion;
+    private String ipAddress;
 
     public UserConsentResponse() {}
 
     public UserConsentResponse(UUID id, UUID userId, String consentType, Boolean accepted,
-            LocalDateTime consentDate, String documentVersion) {
+            LocalDateTime consentDate, String documentVersion, String ipAddress) {
         this.id = id;
         this.userId = userId;
         this.consentType = consentType;
         this.accepted = accepted;
         this.consentDate = consentDate;
         this.documentVersion = documentVersion;
+        this.ipAddress = ipAddress;
     }
 
     public UUID getId() { return id; }
@@ -40,4 +42,7 @@ public class UserConsentResponse {
 
     public String getDocumentVersion() { return documentVersion; }
     public void setDocumentVersion(String documentVersion) { this.documentVersion = documentVersion; }
+
+    public String getIpAddress() { return ipAddress; }
+    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
 }

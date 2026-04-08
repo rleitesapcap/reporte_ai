@@ -7,7 +7,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,11 +39,11 @@ public class JwtTokenProvider {
         claims.put("authorities", authentication.getAuthorities());
 
         return Jwts.builder()
-            .setClaims(claims)
-            .setSubject(userPrincipal.getUsername())
-            .setIssuedAt(now)
-            .setExpiration(expiryDate)
-            .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+            .claims(claims)
+            .subject(userPrincipal.getUsername())
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(getSigningKey())
             .compact();
     }
 
@@ -55,10 +55,10 @@ public class JwtTokenProvider {
         Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
 
         return Jwts.builder()
-            .setSubject(username)
-            .setIssuedAt(now)
-            .setExpiration(expiryDate)
-            .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+            .subject(username)
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(getSigningKey())
             .compact();
     }
 
@@ -70,10 +70,10 @@ public class JwtTokenProvider {
         Date expiryDate = new Date(now.getTime() + jwtRefreshExpirationInMs);
 
         return Jwts.builder()
-            .setSubject(username)
-            .setIssuedAt(now)
-            .setExpiration(expiryDate)
-            .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+            .subject(username)
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(getSigningKey())
             .compact();
     }
 
@@ -81,12 +81,7 @@ public class JwtTokenProvider {
      * Extrai o username do token JWT
      */
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-            .setSigningKey(getSigningKey())
-            .build()
-            .parseClaimsJws(token)
-            .getBody();
-        return claims.getSubject();
+        return getClaimsFromToken(token).getSubject();
     }
 
     /**
@@ -94,21 +89,21 @@ public class JwtTokenProvider {
      */
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+            Jwts.parser()
+                .verifyWith(getSigningKey())
                 .build()
-                .parseClaimsJws(token);
+                .parseSignedClaims(token);
             return true;
         } catch (SecurityException ex) {
-            System.err.println("Chave de assinatura JWT inválida: {}" + ex);
+            System.err.println("Chave de assinatura JWT inválida: " + ex);
         } catch (MalformedJwtException ex) {
-            System.err.println("Token JWT inválido: {}" + ex);
+            System.err.println("Token JWT inválido: " + ex);
         } catch (ExpiredJwtException ex) {
-            System.err.println("Token JWT expirado: {}" + ex);
+            System.err.println("Token JWT expirado: " + ex);
         } catch (UnsupportedJwtException ex) {
-            System.err.println("Token JWT não suportado: {}" + ex);
+            System.err.println("Token JWT não suportado: " + ex);
         } catch (IllegalArgumentException ex) {
-            System.err.println("String JWT vazia: {}" + ex);
+            System.err.println("String JWT vazia: " + ex);
         }
         return false;
     }
@@ -116,7 +111,7 @@ public class JwtTokenProvider {
     /**
      * Obtém a chave de assinatura
      */
-    private Key getSigningKey() {
+    private SecretKey getSigningKey() {
         byte[] keyBytes = jwtSecret.getBytes();
         return Keys.hmacShaKeyFor(keyBytes);
     }
@@ -125,11 +120,11 @@ public class JwtTokenProvider {
      * Extrai as claims do token
      */
     public Claims getClaimsFromToken(String token) {
-        return Jwts.parserBuilder()
-            .setSigningKey(getSigningKey())
+        return Jwts.parser()
+            .verifyWith(getSigningKey())
             .build()
-            .parseClaimsJws(token)
-            .getBody();
+            .parseSignedClaims(token)
+            .getPayload();
     }
 
     /**

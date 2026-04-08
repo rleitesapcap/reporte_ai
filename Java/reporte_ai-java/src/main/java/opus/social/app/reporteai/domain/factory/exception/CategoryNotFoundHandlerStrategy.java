@@ -5,26 +5,30 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 @Component
-public class CategoryNotFoundHandlerStrategy implements ExceptionHandlerStrategy {
+public class CategoryNotFoundHandlerStrategy implements ExceptionHandlerStrategy<EmployeeNotFoundException> {
 
     @Override
-    public boolean supports(Exception exception) {
-        return exception instanceof EmployeeNotFoundException
-            && exception.getMessage().toLowerCase().contains("category");
+    public ResponseEntity<Object> handle(EmployeeNotFoundException exception) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", HttpStatus.NOT_FOUND.value());
+        errorResponse.put("error", "Category Not Found");
+        errorResponse.put("message", exception.getMessage());
+        errorResponse.put("timestamp", LocalDateTime.now());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
 
     @Override
-    public ResponseEntity<Map<String, Object>> handle(Exception exception) {
-        Map<String, Object> response = Map.of(
-            "timestamp", LocalDateTime.now(),
-            "status", HttpStatus.NOT_FOUND.value(),
-            "error", "Not Found",
-            "message", exception.getMessage(),
-            "errorType", "CATEGORY_NOT_FOUND"
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    @SuppressWarnings("unchecked")
+    public Class<EmployeeNotFoundException> getExceptionType() {
+        return EmployeeNotFoundException.class;
+    }
+
+    @Override
+    public String getHandlerName() {
+        return "CategoryNotFoundHandler";
     }
 }

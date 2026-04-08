@@ -21,10 +21,10 @@ public class OccurrenceImageJpaEntity {
     @Column(nullable = false)
     private UUID occurrenceId;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "s3_url", nullable = false, length = 500)
     private String s3Url;
 
-    @Column(nullable = false, unique = true, length = 500)
+    @Column(name = "s3_key", nullable = false, unique = true, length = 500)
     private String s3Key;
 
     @Column

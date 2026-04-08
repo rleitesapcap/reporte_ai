@@ -91,14 +91,13 @@ public class OccurrenceHistoryController {
         return new OccurrenceHistoryResponse(
             history.getId(),
             history.getOccurrenceId(),
-            history.getUserId(),
             history.getAction(),
             history.getOldStatus(),
             history.getNewStatus(),
-            history.getOldScore(),
-            history.getNewScore(),
-            history.getReason(),
-            history.getChangedAt()
+            history.getOldPriorityScore(),
+            history.getNewPriorityScore(),
+            history.getChangeReason(),
+            history.getCreatedAt()
         );
     }
 }

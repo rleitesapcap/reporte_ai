@@ -5,8 +5,10 @@ import opus.social.app.reporteai.application.dto.RegisterRequest;
 import opus.social.app.reporteai.application.service.AuthUserApplicationService;
 import opus.social.app.reporteai.application.service.TokenBlacklistService;
 import opus.social.app.reporteai.infrastructure.persistence.entity.AuthUserJpaEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import java.time.ZoneId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -185,9 +186,10 @@ public class AuthController {
                 String username = tokenProvider.getUsernameFromToken(validateRequest.getToken());
                 response.put("username", username);
                 response.put("expiresAt", tokenProvider.getExpirationDateFromToken(validateRequest.getToken()));
+                return ResponseEntity.ok(response);
             }
 
-            return ResponseEntity.ok(response);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("isValid", false);
@@ -221,7 +223,7 @@ public class AuthController {
                         token,
                         user.getId(),
                         "ACCESS",
-                        tokenProvider.getExpirationDateFromToken(token).toLocalDateTime()
+                        tokenProvider.getExpirationDateFromToken(token).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
                     );
                 }
             }
@@ -259,7 +261,9 @@ public class AuthController {
      * DTOs para requisições
      */
     public static class LoginRequest {
+        @jakarta.validation.constraints.NotBlank
         private String username;
+        @jakarta.validation.constraints.NotBlank
         private String password;
 
         public LoginRequest() {}

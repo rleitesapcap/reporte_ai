@@ -102,13 +102,11 @@ public class UserRateLimitController {
             rateLimit.getUserId(),
             rateLimit.getDailyLimit(),
             rateLimit.getHourlyLimit(),
-            rateLimit.getDailyCount(),
-            rateLimit.getHourlyCount(),
-            rateLimit.getLastResetDaily(),
-            rateLimit.getLastResetHourly(),
+            rateLimit.getOccurrencesToday(),
+            rateLimit.getOccurrencesThisHour(),
             rateLimit.getIsBlocked(),
             rateLimit.getBlockedUntil(),
-            rateLimit.getCreatedAt()
+            rateLimit.getUpdatedAt()
         );
     }
 }

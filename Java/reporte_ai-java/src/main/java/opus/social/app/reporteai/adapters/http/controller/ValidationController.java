@@ -138,13 +138,12 @@ public class ValidationController {
         return new ValidationResponse(
             validation.getId(),
             validation.getOccurrenceId(),
-            validation.getValidatorId(),
+            validation.getValidatorUserId(),
             validation.getValidationType(),
             validation.getResult(),
             validation.getReason(),
             validation.getConfidence(),
-            validation.getCreatedAt(),
-            validation.getUpdatedAt()
+            validation.getValidatedAt()
         );
     }
 }
