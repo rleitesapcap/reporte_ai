@@ -1,0 +1,54 @@
+{
+  "name": "Meta WhatsApp - Verificacao Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "meta-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c1000001-0001-4001-8001-000000000001",
+      "name": "Webhook GET",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Token que voce define - deve ser o mesmo cadastrado na Meta\nconst VERIFY_TOKEN = 'reporte-ai-verify-2026';\n\nconst query = $input.item.json.query || {};\nconst mode = query['hub.mode'];\nconst token = query['hub.verify_token'];\nconst challenge = query['hub.challenge'];\n\nif (mode === 'subscribe' && token === VERIFY_TOKEN) {\n  return {\n    responseCode: 200,\n    responseBody: challenge,\n    valid: true\n  };\n}\n\nreturn {\n  responseCode: 403,\n  responseBody: 'Forbidden',\n  valid: false\n};"
+      },
+      "id": "c1000001-0002-4002-8002-000000000002",
+      "name": "Validar Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.responseBody }}",
+        "options": {
+          "responseCode": "={{ $json.responseCode }}"
+        }
+      },
+      "id": "c1000001-0003-4003-8003-000000000003",
+      "name": "Responder Meta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook GET": {
+      "main": [[{ "node": "Validar Token", "type": "main", "index": 0 }]]
+    },
+    "Validar Token": {
+      "main": [[{ "node": "Responder Meta", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

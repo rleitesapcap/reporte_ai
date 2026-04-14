@@ -1,0 +1,311 @@
+{
+  "name": "Reporte AI - Bot WhatsApp (Meta Direto)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "={{$request.method}}",
+        "path": "meta-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-meta",
+      "name": "Webhook Meta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Handler unificado GET (verificação) + POST (mensagens)\nconst query = $input.item.json.query || {};\nconst body = $input.item.json.body || {};\nconst headers = $input.item.json.headers || {};\nconst method = headers['method'] || headers[':method'] || 'POST';\n\n// ===== GET: Verificação do Webhook (handshake Meta) =====\nif (query['hub.mode'] === 'subscribe' || query['hub.verify_token']) {\n  const VERIFY_TOKEN = 'reporte-ai-webhook-verify-2026'; // Troque por seu token\n  \n  if (query['hub.verify_token'] === VERIFY_TOKEN) {\n    return {\n      isVerification: true,\n      challenge: query['hub.challenge'],\n      responseCode: 200\n    };\n  }\n  return {\n    isVerification: true,\n    challenge: '',\n    responseCode: 403\n  };\n}\n\n// ===== POST: Mensagem recebida =====\nconst entry = body.entry?.[0]?.changes?.[0]?.value;\n\n// Ignorar se não tem mensagem (status updates, etc)\nif (!entry?.messages || entry.messages.length === 0) {\n  return {\n    isVerification: false,\n    skip: true,\n    responseCode: 200\n  };\n}\n\nconst msg = entry.messages[0];\nconst contact = entry.contacts?.[0];\n\n// Extrair dados\nconst phone = msg.from;\nconst pushName = contact?.profile?.name || 'Cidadão';\nconst msgType = msg.type;\nconst msgId = msg.id;\nconst timestamp = msg.timestamp;\n\n// Texto\nlet text = '';\nif (msg.text?.body) text = msg.text.body;\nelse if (msg.interactive?.button_reply?.id) text = msg.interactive.button_reply.id;\nelse if (msg.interactive?.list_reply?.id) text = msg.interactive.list_reply.id;\nelse if (msg.image?.caption) text = msg.image.caption;\n\n// Localização\nconst hasLocation = msgType === 'location';\nconst latitude = msg.location?.latitude || null;\nconst longitude = msg.location?.longitude || null;\nconst locationName = msg.location?.name || null;\nconst locationAddress = msg.location?.address || null;\n\n// Imagem\nconst hasImage = msgType === 'image';\nconst imageId = msg.image?.id || null; // Precisa baixar via Graph API\nconst imageCaption = msg.image?.caption || null;\n\n// Detecção de modo\nlet mode = 'texto';\nif (hasImage && (imageCaption || hasLocation)) mode = 'rapido';\nelse if (hasImage) mode = 'foto_sem_contexto';\nelse if (hasLocation) mode = 'localizacao';\nelse if (msgType === 'interactive') {\n  if (msg.interactive?.type === 'button_reply') mode = 'selecao_botao';\n  else if (msg.interactive?.type === 'list_reply') mode = 'selecao_lista';\n}\nelse if (text.match(/^RPT-\\d{4}-\\d{5}$/i)) mode = 'consulta_protocolo';\nelse if (['1','2','3','4','5','6','7','8','9','10','11','12'].includes(text.trim())) mode = 'selecao_numero';\nelse if (text.toLowerCase().startsWith('sim') || text.toLowerCase() === 's') mode = 'confirmacao_sim';\nelse if (text.toLowerCase().startsWith('n') || text.toLowerCase().startsWith('não')) mode = 'confirmacao_nao';\n\nreturn {\n  isVerification: false,\n  skip: false,\n  responseCode: 200,\n  phone,\n  pushName,\n  msgType,\n  msgId,\n  text: text.trim(),\n  mode,\n  hasImage,\n  imageId,\n  imageCaption,\n  hasLocation,\n  latitude,\n  longitude,\n  locationName,\n  locationAddress,\n  timestamp,\n  phoneNumberId: entry.metadata?.phone_number_id\n};"
+      },
+      "id": "process-payload",
+      "name": "Processar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputIndex": 0,
+              "conditions": { "conditions": [{ "leftValue": "={{ $json.isVerification }}", "rightValue": "true", "operator": { "type": "string", "operation": "equals" } }] }
+            },
+            {
+              "outputIndex": 1,
+              "conditions": { "conditions": [{ "leftValue": "={{ $json.skip }}", "rightValue": "true", "operator": { "type": "string", "operation": "equals" } }] }
+            }
+          ],
+          "fallbackOutput": 2
+        },
+        "options": {}
+      },
+      "id": "switch-type",
+      "name": "Verificação ou Msg?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.challenge }}",
+        "options": {
+          "responseCode": "={{ $json.responseCode }}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "text/plain" }] }
+        }
+      },
+      "id": "respond-verify",
+      "name": "Respond Verificação",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {}
+      },
+      "id": "respond-skip",
+      "name": "Respond Skip",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {}
+      },
+      "id": "respond-msg",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 600]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.phoneNumberId }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.phone }}\",\n  \"type\": \"reaction\",\n  \"reaction\": {\n    \"message_id\": \"{{ $json.msgId }}\",\n    \"emoji\": \"✅\"\n  }\n}",
+        "options": { "timeout": 5000 }
+      },
+      "id": "meta-react",
+      "name": "Meta: Reagir ✅",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputIndex": 0, "conditions": { "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "rapido", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputIndex": 1, "conditions": { "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "consulta_protocolo", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputIndex": 2, "conditions": { "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "selecao_numero", "operator": { "type": "string", "operation": "equals" } }] } }
+          ],
+          "fallbackOutput": 3
+        },
+        "options": {}
+      },
+      "id": "switch-mode-meta",
+      "name": "Switch Modo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1340, 600]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Helper: Montar payload de envio para Meta Graph API\nconst prev = $('Processar Payload').first().json;\n\nfunction sendTextPayload(phone, text, phoneNumberId) {\n  return {\n    url: `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,\n    body: {\n      messaging_product: 'whatsapp',\n      to: phone,\n      type: 'text',\n      text: { body: text }\n    }\n  };\n}\n\nfunction sendButtonsPayload(phone, bodyText, buttons, phoneNumberId) {\n  return {\n    url: `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,\n    body: {\n      messaging_product: 'whatsapp',\n      to: phone,\n      type: 'interactive',\n      interactive: {\n        type: 'button',\n        body: { text: bodyText },\n        action: {\n          buttons: buttons.map((b, i) => ({\n            type: 'reply',\n            reply: { id: b.id, title: b.title }\n          }))\n        }\n      }\n    }\n  };\n}\n\nfunction sendListPayload(phone, bodyText, buttonText, sections, phoneNumberId) {\n  return {\n    url: `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,\n    body: {\n      messaging_product: 'whatsapp',\n      to: phone,\n      type: 'interactive',\n      interactive: {\n        type: 'list',\n        body: { text: bodyText },\n        action: {\n          button: buttonText,\n          sections: sections\n        }\n      }\n    }\n  };\n}\n\n// Menu principal com lista interativa\nconst menuPayload = sendListPayload(\n  prev.phone,\n  `🏙️ *Reporte AI - Inteligência Comunitária*\\n\\nOlá, ${prev.pushName}! Como posso ajudar?`,\n  'Escolher opção',\n  [{\n    title: 'Opções',\n    rows: [\n      { id: 'opt_reportar', title: '📋 Reportar problema', description: 'Passo a passo guiado' },\n      { id: 'opt_rapido', title: '📸 Modo rápido', description: 'Foto + localização em 1 msg' },\n      { id: 'opt_protocolo', title: '🔍 Consultar protocolo', description: 'Acompanhar status' },\n      { id: 'opt_ajuda', title: 'ℹ️ Ajuda', description: 'Como funciona' }\n    ]\n  }],\n  prev.phoneNumberId\n);\n\nreturn {\n  ...prev,\n  menuPayload: JSON.stringify(menuPayload.body),\n  menuUrl: menuPayload.url\n};"
+      },
+      "id": "meta-helpers",
+      "name": "Preparar Menu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 900]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.menuUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.menuPayload }}",
+        "options": {}
+      },
+      "id": "meta-send-menu",
+      "name": "Meta: Enviar Menu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1800, 900]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "content": "=Classifique esta ocorrência urbana brasileira na categoria adequada.\n\nCategorias: LIXO, ILUMINACAO, BURACO, AGUA, VEGETACAO, TRANSITO, SEGURANCA, ANIMAIS, POLUICAO, ACESSIBILIDADE, TURISMO, OUTROS\n\nDescrição: {{ $json.text || $json.imageCaption || 'Sem descrição' }}\n\nResponda APENAS JSON: {\"categoria\": \"CODIGO\", \"confianca\": 0.95}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": { "temperature": 0.1, "maxTokens": 100 }
+      },
+      "id": "openai-classify-meta",
+      "name": "OpenAI Classificar",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1580, 300],
+      "credentials": { "openAiApi": { "id": "OPENAI_CREDENTIAL_ID", "name": "OpenAI" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SPRING_BOOT_URL }}/api/v1/ocorrencias",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"descricao\": \"{{ ($('Processar Payload').first().json.text || $('Processar Payload').first().json.imageCaption || 'Reportado via foto').replace(/\"/g, '\\\\\"') }}\",\n  \"latitude\": {{ $('Processar Payload').first().json.latitude || 'null' }},\n  \"longitude\": {{ $('Processar Payload').first().json.longitude || 'null' }},\n  \"enderecoTexto\": {{ $('Processar Payload').first().json.locationAddress ? '\"' + $('Processar Payload').first().json.locationAddress.replace(/\"/g, '\\\\\"') + '\"' : 'null' }},\n  \"gravidade\": \"MEDIA\",\n  \"canal\": \"WHATSAPP_RAPIDO\",\n  \"cidadeId\": 1\n}",
+        "options": {}
+      },
+      "id": "create-ocorrencia-meta",
+      "name": "Criar Ocorrência",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1800, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const prev = $('Processar Payload').first().json;\nconst oc = $input.item.json;\n\nreturn {\n  url: `https://graph.facebook.com/v21.0/${prev.phoneNumberId}/messages`,\n  body: JSON.stringify({\n    messaging_product: 'whatsapp',\n    to: prev.phone,\n    type: 'interactive',\n    interactive: {\n      type: 'button',\n      body: {\n        text: `✅ *Ocorrência registrada!*\\n\\n📋 Protocolo: *${oc.protocolo}*\\n🏷️ Categoria: ${oc.categoriaNome || 'Classificando...'}\\n⚠️ Prioridade: ${oc.scorePrioridade}\\n\\nObrigado por contribuir! 🏙️`\n      },\n      action: {\n        buttons: [\n          { type: 'reply', reply: { id: `status_${oc.protocolo}`, title: '📋 Ver status' } },\n          { type: 'reply', reply: { id: 'novo_reporte', title: '➕ Novo reporte' } }\n        ]\n      }\n    }\n  })\n};"
+      },
+      "id": "format-confirm-meta",
+      "name": "Formatar Confirmação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2020, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "meta-send-confirm",
+      "name": "Meta: Enviar Confirmação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SPRING_BOOT_URL }}/api/v1/ocorrencias/protocolo/{{ $json.text }}",
+        "options": { "timeout": 5000 }
+      },
+      "id": "consulta-protocolo-meta",
+      "name": "Consultar Protocolo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const prev = $('Processar Payload').first().json;\nconst resp = $input.item.json;\n\nlet text = '';\nif (resp.protocolo) {\n  const emojis = { RECEBIDA:'📥', EM_ANALISE:'🔍', VALIDADA:'✅', EM_RESOLUCAO:'🔧', RESOLVIDA:'🎉', ARQUIVADA:'📦', REJEITADA:'❌' };\n  const e = emojis[resp.status] || '📋';\n  const s = (resp.status||'').replace(/_/g,' ');\n  const d = resp.dataRegistro ? resp.dataRegistro.substring(0,10) : '—';\n  const desc = resp.descricao?.length > 80 ? resp.descricao.substring(0,80)+'...' : (resp.descricao||'—');\n  text = `🔍 *Status do Protocolo ${resp.protocolo}*\\n\\n${e} Status: *${s}*\\n🏷️ Categoria: ${resp.categoriaNome||'—'}\\n📝 ${desc}\\n📅 Registrado: ${d}`;\n} else {\n  text = `⚠️ Protocolo *${prev.text}* não encontrado. Verifique o número (formato: RPT-2026-00001).`;\n}\n\nreturn {\n  url: `https://graph.facebook.com/v21.0/${prev.phoneNumberId}/messages`,\n  body: JSON.stringify({\n    messaging_product: 'whatsapp',\n    to: prev.phone,\n    type: 'text',\n    text: { body: text }\n  })\n};"
+      },
+      "id": "format-protocolo-meta",
+      "name": "Formatar Protocolo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 600]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "meta-send-protocolo",
+      "name": "Meta: Enviar Protocolo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2020, 600]
+    }
+  ],
+  "connections": {
+    "Webhook Meta": { "main": [[{ "node": "Processar Payload", "type": "main", "index": 0 }]] },
+    "Processar Payload": { "main": [[{ "node": "Verificação ou Msg?", "type": "main", "index": 0 }]] },
+    "Verificação ou Msg?": {
+      "main": [
+        [{ "node": "Respond Verificação", "type": "main", "index": 0 }],
+        [{ "node": "Respond Skip", "type": "main", "index": 0 }],
+        [{ "node": "Respond 200 OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond 200 OK": { "main": [[{ "node": "Meta: Reagir ✅", "type": "main", "index": 0 }]] },
+    "Meta: Reagir ✅": { "main": [[{ "node": "Switch Modo", "type": "main", "index": 0 }]] },
+    "Switch Modo": {
+      "main": [
+        [{ "node": "OpenAI Classificar", "type": "main", "index": 0 }],
+        [{ "node": "Consultar Protocolo", "type": "main", "index": 0 }],
+        [{ "node": "Preparar Menu", "type": "main", "index": 0 }],
+        [{ "node": "Preparar Menu", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenAI Classificar": { "main": [[{ "node": "Criar Ocorrência", "type": "main", "index": 0 }]] },
+    "Criar Ocorrência": { "main": [[{ "node": "Formatar Confirmação", "type": "main", "index": 0 }]] },
+    "Formatar Confirmação": { "main": [[{ "node": "Meta: Enviar Confirmação", "type": "main", "index": 0 }]] },
+    "Consultar Protocolo": { "main": [[{ "node": "Formatar Protocolo", "type": "main", "index": 0 }]] },
+    "Formatar Protocolo": { "main": [[{ "node": "Meta: Enviar Protocolo", "type": "main", "index": 0 }]] },
+    "Preparar Menu": { "main": [[{ "node": "Meta: Enviar Menu", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [{ "name": "Reporte AI" }, { "name": "WhatsApp" }, { "name": "Meta Cloud API" }],
+  "triggerCount": 1,
+  "pinData": {}
+}

@@ -1,0 +1,233 @@
+{
+  "name": "Reporte AI - Notificacoes",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notificacao-status",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "b1b2c3d4-1111-4111-8111-111111111111",
+      "name": "Webhook Status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $input.item.json.body || $input.item.json;\n\nconst emojis = {\n  RECEBIDA: '\\ud83d\\udce5', EM_ANALISE: '\\ud83d\\udd0d', VALIDADA: '\\u2705',\n  EM_RESOLUCAO: '\\ud83d\\udd27', RESOLVIDA: '\\ud83c\\udf89', ARQUIVADA: '\\ud83d\\udce6', REJEITADA: '\\u274c'\n};\n\nconst emoji = emojis[d.statusNovo] || '\\ud83d\\udccb';\nconst statusText = (d.statusNovo || '').replace(/_/g, ' ');\nconst statusAnt = (d.statusAnterior || '').replace(/_/g, ' ');\n\nlet text = emoji + ' *Atualiza\\u00e7\\u00e3o do Protocolo ' + d.protocolo + '*\\n\\n';\ntext += 'Status: ' + statusAnt + ' \\u2192 *' + statusText + '*\\n';\ntext += 'Categoria: ' + (d.categoriaNome || '\\u2014') + '\\n\\n';\n\nif (d.statusNovo === 'RESOLVIDA') {\n  text += '\\ud83c\\udf89 Seu reporte foi resolvido! Obrigado!';\n} else if (d.statusNovo === 'EM_RESOLUCAO') {\n  text += '\\ud83d\\udd27 Uma equipe foi designada.';\n} else {\n  text += 'Acompanhe enviando o protocolo.';\n}\n\nreturn { phone: d.phone, text: text };"
+      },
+      "id": "b1b2c3d4-2222-4222-8222-222222222222",
+      "name": "Formatar Notificacao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_BASE_URL || 'http://localhost:8080' }}/message/sendText/{{ $env.EVOLUTION_INSTANCE || 'reporteai' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY || '' }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": {{ JSON.stringify($json.text) }},\n  \"delay\": 1200\n}",
+        "options": {}
+      },
+      "id": "b1b2c3d4-3333-4333-8333-333333333333",
+      "name": "Enviar Notificacao",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "b1b2c3d4-4444-4444-8444-444444444444",
+      "name": "Cron Alertas 1h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SPRING_BOOT_URL || 'http://localhost:8081' }}/api/v1/ocorrencias/top?cidadeId=1&limit=5",
+        "options": { "timeout": 10000 }
+      },
+      "id": "b1b2c3d4-5555-4555-8555-555555555555",
+      "name": "Buscar Top Prioridade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const items = $input.item.json;\nconst THRESHOLD = parseFloat($env.SCORE_ALERTA_THRESHOLD || '15');\nconst GESTOR = $env.GESTOR_PHONE || '';\n\nif (!GESTOR || !Array.isArray(items) || items.length === 0) {\n  return { skip: true };\n}\n\nconst criticas = items.filter(function(o) {\n  return parseFloat(o.scorePrioridade || 0) >= THRESHOLD;\n});\n\nif (criticas.length === 0) return { skip: true };\n\nlet text = '\\ud83d\\udea8 *Alerta - ' + criticas.length + ' ocorr\\u00eancia(s) cr\\u00edtica(s)*\\n\\n';\ncriticas.forEach(function(o, i) {\n  text += (i+1) + '. *' + o.protocolo + '* | ' + (o.categoriaNome || '') + ' | Score: ' + o.scorePrioridade + '\\n';\n});\ntext += '\\nAcesse o dashboard para detalhes.';\n\nreturn { skip: false, phone: GESTOR, text: text };"
+      },
+      "id": "b1b2c3d4-6666-4666-8666-666666666666",
+      "name": "Verificar Alertas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "if ($input.item.json.skip === true) return [];\nreturn $input.item.json;"
+      },
+      "id": "b1b2c3d4-6677-4677-8677-667766776677",
+      "name": "Filtrar Alertas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_BASE_URL || 'http://localhost:8080' }}/message/sendText/{{ $env.EVOLUTION_INSTANCE || 'reporteai' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY || '' }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": {{ JSON.stringify($json.text) }},\n  \"delay\": 1500\n}",
+        "options": {}
+      },
+      "id": "b1b2c3d4-7777-4777-8777-777777777777",
+      "name": "Alertar Gestor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 500]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      },
+      "id": "b1b2c3d4-8888-4888-8888-888888888888",
+      "name": "Cron Health 5min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 800]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.EVOLUTION_BASE_URL || 'http://localhost:8080' }}/instance/connectionState/{{ $env.EVOLUTION_INSTANCE || 'reporteai' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY || '' }}" }
+          ]
+        },
+        "options": { "timeout": 5000 }
+      },
+      "id": "b1b2c3d4-9999-4999-8999-999999999999",
+      "name": "Check Evolution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 800],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const resp = $input.item.json;\nconst state = (resp.instance && resp.instance.state) ? resp.instance.state : 'unknown';\nconst ADMIN = $env.ADMIN_PHONE || '';\n\nif (state === 'open' || !ADMIN) return [];\n\nreturn {\n  phone: ADMIN,\n  text: '\\ud83d\\udea8 *ALERTA CR\\u00cdTICO*\\n\\nWhatsApp do Reporte AI est\\u00e1 *DESCONECTADO*.\\nEstado: ' + state + '\\n\\nAcesse o Evolution Manager para reconectar.'\n};"
+      },
+      "id": "b1b2c3d4-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "name": "Verificar Conexao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_BASE_URL || 'http://localhost:8080' }}/message/sendText/{{ $env.EVOLUTION_INSTANCE || 'reporteai' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY || '' }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": {{ JSON.stringify($json.text) }},\n  \"delay\": 1000\n}",
+        "options": {}
+      },
+      "id": "b1b2c3d4-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "name": "Alertar Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 800]
+    }
+  ],
+  "connections": {
+    "Webhook Status": {
+      "main": [
+        [{ "node": "Formatar Notificacao", "type": "main", "index": 0 }]
+      ]
+    },
+    "Formatar Notificacao": {
+      "main": [
+        [{ "node": "Enviar Notificacao", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cron Alertas 1h": {
+      "main": [
+        [{ "node": "Buscar Top Prioridade", "type": "main", "index": 0 }]
+      ]
+    },
+    "Buscar Top Prioridade": {
+      "main": [
+        [{ "node": "Verificar Alertas", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verificar Alertas": {
+      "main": [
+        [{ "node": "Filtrar Alertas", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filtrar Alertas": {
+      "main": [
+        [{ "node": "Alertar Gestor", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cron Health 5min": {
+      "main": [
+        [{ "node": "Check Evolution", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Evolution": {
+      "main": [
+        [{ "node": "Verificar Conexao", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verificar Conexao": {
+      "main": [
+        [{ "node": "Alertar Admin", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,226 @@
+{
+  "name": "Reporte AI - Notificações Automáticas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notificacao-status",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-status",
+      "name": "Webhook Status Update",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200],
+      "webhookId": "notificacao-status"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Recebe do Spring Boot quando status muda\n// Payload esperado: { protocolo, statusAnterior, statusNovo, phone, categoriaNome }\nconst d = $input.item.json.body || $input.item.json;\n\nconst emojis = {\n  RECEBIDA: '📥', EM_ANALISE: '🔍', VALIDADA: '✅',\n  EM_RESOLUCAO: '🔧', RESOLVIDA: '🎉', ARQUIVADA: '📦', REJEITADA: '❌'\n};\n\nconst emoji = emojis[d.statusNovo] || '📋';\nconst statusText = (d.statusNovo || '').replace(/_/g, ' ');\nconst statusAnt = (d.statusAnterior || '').replace(/_/g, ' ');\n\nlet text = `${emoji} *Atualização do Protocolo ${d.protocolo}*\\n\\n`;\ntext += `Status: ${statusAnt} → *${statusText}*\\n`;\ntext += `Categoria: ${d.categoriaNome || '—'}\\n\\n`;\n\nif (d.statusNovo === 'RESOLVIDA') {\n  text += '🎉 Seu reporte foi resolvido! Obrigado por contribuir com a cidade.';\n} else if (d.statusNovo === 'EM_RESOLUCAO') {\n  text += '🔧 Uma equipe foi designada para resolver o problema.';\n} else {\n  text += 'Acompanhe a qualquer momento enviando o protocolo.';\n}\n\nreturn {\n  phone: d.phone,\n  text,\n  protocolo: d.protocolo\n};"
+      },
+      "id": "format-status-notif",
+      "name": "Formatar Notificação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": \"{{ $json.text }}\",\n  \"delay\": 1200\n}",
+        "options": {}
+      },
+      "id": "send-status-notif",
+      "name": "Enviar Notificação Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "cron-alertas",
+      "name": "Cron Alertas (1h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SPRING_BOOT_URL }}/api/v1/ocorrencias/top?cidadeId=1&limit=5",
+        "options": { "timeout": 10000 }
+      },
+      "id": "fetch-top-prioridade",
+      "name": "Buscar Top 5 Prioridade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Verificar se alguma ocorrência tem score acima do threshold\nconst items = $input.item.json;\nconst THRESHOLD = parseFloat($env.SCORE_ALERTA_THRESHOLD || '15');\nconst GESTOR_PHONE = $env.GESTOR_PHONE || '';\n\nif (!Array.isArray(items) || items.length === 0 || !GESTOR_PHONE) {\n  return { skip: true };\n}\n\nconst criticas = items.filter(o => parseFloat(o.scorePrioridade) >= THRESHOLD);\n\nif (criticas.length === 0) {\n  return { skip: true };\n}\n\nlet text = `🚨 *Alerta - ${criticas.length} ocorrência(s) crítica(s)*\\n\\n`;\n\ncriticas.forEach((o, i) => {\n  text += `${i+1}. *${o.protocolo}*\\n`;\n  text += `   ${o.categoriaNome || '—'} | Score: ${o.scorePrioridade}\\n`;\n  text += `   ${o.descricao ? o.descricao.substring(0, 60) + '...' : '—'}\\n\\n`;\n});\n\ntext += 'Acesse o dashboard para detalhes.';\n\nreturn {\n  skip: false,\n  phone: GESTOR_PHONE,\n  text\n};"
+      },
+      "id": "check-alertas",
+      "name": "Verificar Alertas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": "true",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ]
+        }
+      },
+      "id": "filter-alertas",
+      "name": "Tem Alertas?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": \"{{ $json.text }}\",\n  \"delay\": 1500\n}",
+        "options": {}
+      },
+      "id": "send-alerta-gestor",
+      "name": "Alertar Gestor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 500]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 15 }]
+        }
+      },
+      "id": "cron-refresh",
+      "name": "Cron Refresh MVs (15min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 800]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT fn_refresh_materialized_views();",
+        "options": {}
+      },
+      "id": "refresh-mvs",
+      "name": "Refresh Materialized Views",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [460, 800],
+      "credentials": { "postgres": { "id": "POSTGRES_CREDENTIAL_ID", "name": "Reporte AI DB" } }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      },
+      "id": "cron-health",
+      "name": "Cron Health Check (5min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 1050]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/instance/connectionState/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" }]
+        },
+        "options": { "timeout": 5000 }
+      },
+      "id": "check-evolution-health",
+      "name": "Check Evolution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 1050],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.instance?.state }}",
+              "rightValue": "open",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ]
+        }
+      },
+      "id": "filter-disconnected",
+      "name": "Desconectou?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 1050]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Enviar alerta para admin\nconst state = $input.item.json.instance?.state || 'unknown';\nreturn {\n  phone: $env.ADMIN_PHONE || '',\n  text: `🚨 *ALERTA CRÍTICO*\\n\\nA instância WhatsApp do Reporte AI está *DESCONECTADA*.\\n\\nEstado atual: ${state}\\n\\nAcesse o Evolution Manager para reconectar.`\n};"
+      },
+      "id": "format-disconnect-alert",
+      "name": "Formatar Alerta Desconexão",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 1050]
+    }
+  ],
+  "connections": {
+    "Webhook Status Update": { "main": [[{ "node": "Formatar Notificação", "type": "main", "index": 0 }]] },
+    "Formatar Notificação": { "main": [[{ "node": "Enviar Notificação Status", "type": "main", "index": 0 }]] },
+    "Cron Alertas (1h)": { "main": [[{ "node": "Buscar Top 5 Prioridade", "type": "main", "index": 0 }]] },
+    "Buscar Top 5 Prioridade": { "main": [[{ "node": "Verificar Alertas", "type": "main", "index": 0 }]] },
+    "Verificar Alertas": { "main": [[{ "node": "Tem Alertas?", "type": "main", "index": 0 }]] },
+    "Tem Alertas?": { "main": [[{ "node": "Alertar Gestor", "type": "main", "index": 0 }]] },
+    "Cron Refresh MVs (15min)": { "main": [[{ "node": "Refresh Materialized Views", "type": "main", "index": 0 }]] },
+    "Cron Health Check (5min)": { "main": [[{ "node": "Check Evolution", "type": "main", "index": 0 }]] },
+    "Check Evolution": { "main": [[{ "node": "Desconectou?", "type": "main", "index": 0 }]] },
+    "Desconectou?": { "main": [[{ "node": "Formatar Alerta Desconexão", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true },
+  "tags": [{ "name": "Reporte AI" }, { "name": "Notificações" }, { "name": "Automação" }],
+  "triggerCount": 4,
+  "pinData": {}
+}

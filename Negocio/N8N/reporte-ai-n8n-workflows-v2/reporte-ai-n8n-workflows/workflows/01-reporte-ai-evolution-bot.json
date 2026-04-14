@@ -1,0 +1,322 @@
+{
+  "name": "Reporte AI - Bot WhatsApp (Evolution API)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Evolution",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {}
+      },
+      "id": "respond-200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "" },
+          "conditions": [
+            {
+              "id": "filter-event",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "messages.upsert",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "filter-fromme",
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "rightValue": "false",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-messages",
+      "name": "Filtrar Msgs Válidas",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extrair dados normalizados do payload Evolution API\nconst data = $input.item.json.body.data;\nconst msg = data.message || {};\nconst key = data.key || {};\n\n// Telefone (remover @s.whatsapp.net)\nconst phone = (key.remoteJid || '').replace('@s.whatsapp.net', '').replace('@lid', '');\n\n// Tipo de mensagem\nconst msgType = data.messageType || 'unknown';\n\n// Texto\nlet text = '';\nif (msg.conversation) text = msg.conversation;\nelse if (msg.extendedTextMessage?.text) text = msg.extendedTextMessage.text;\nelse if (msg.imageMessage?.caption) text = msg.imageMessage.caption;\nelse if (msg.listResponseMessage?.singleSelectReply?.selectedRowId) text = msg.listResponseMessage.singleSelectReply.selectedRowId;\nelse if (msg.buttonsResponseMessage?.selectedButtonId) text = msg.buttonsResponseMessage.selectedButtonId;\n\n// Localização\nconst hasLocation = msgType === 'locationMessage' || !!msg.locationMessage;\nconst latitude = msg.locationMessage?.degreesLatitude || null;\nconst longitude = msg.locationMessage?.degreesLongitude || null;\nconst locationAddress = msg.locationMessage?.address || null;\n\n// Imagem\nconst hasImage = msgType === 'imageMessage' || !!msg.imageMessage;\nconst imageBase64 = msg.imageMessage?.base64 || null;\nconst imageUrl = msg.imageMessage?.mediaUrl || msg.imageMessage?.url || null;\nconst imageCaption = msg.imageMessage?.caption || null;\n\n// Detecção de modo\nlet mode = 'texto';\nif (hasImage && (hasLocation || imageCaption)) mode = 'rapido';\nelse if (hasImage) mode = 'foto_sem_contexto';\nelse if (hasLocation) mode = 'localizacao';\nelse if (msgType === 'listResponseMessage') mode = 'selecao_lista';\nelse if (msgType === 'buttonsResponseMessage') mode = 'selecao_botao';\nelse if (text.match(/^RPT-\\d{4}-\\d{5}$/i)) mode = 'consulta_protocolo';\nelse if (['1','2','3','4','5','6','7','8','9','10','11','12'].includes(text.trim())) mode = 'selecao_numero';\nelse if (text.toLowerCase().startsWith('sim') || text.toLowerCase() === 's') mode = 'confirmacao_sim';\nelse if (text.toLowerCase().startsWith('n') || text.toLowerCase().startsWith('não')) mode = 'confirmacao_nao';\nelse if (text.toLowerCase() === 'pular') mode = 'pular';\n\nreturn {\n  phone,\n  pushName: data.pushName || 'Cidadão',\n  msgType,\n  text: text.trim(),\n  mode,\n  msgId: key.id,\n  remoteJid: key.remoteJid,\n  hasImage,\n  imageBase64,\n  imageUrl,\n  imageCaption,\n  hasLocation,\n  latitude,\n  longitude,\n  locationAddress,\n  timestamp: data.messageTimestamp,\n  instanceName: $input.item.json.body.instance\n};"
+      },
+      "id": "extract-data",
+      "name": "Extrair Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendReaction/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"key\": {\n    \"remoteJid\": \"{{ $json.remoteJid }}\",\n    \"fromMe\": false,\n    \"id\": \"{{ $json.msgId }}\"\n  },\n  \"reaction\": \"✅\"\n}",
+        "options": { "timeout": 5000 }
+      },
+      "id": "react-check",
+      "name": "Reagir ✅",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputIndex": 0, "conditions": { "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "rapido", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputIndex": 1, "conditions": { "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "consulta_protocolo", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputIndex": 2, "conditions": { "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "selecao_numero", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputIndex": 3, "conditions": { "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "confirmacao_sim", "operator": { "type": "string", "operation": "equals" } }] } },
+            { "outputIndex": 4, "conditions": { "conditions": [{ "leftValue": "={{ $json.mode }}", "rightValue": "texto", "operator": { "type": "string", "operation": "equals" } }] } }
+          ],
+          "fallbackOutput": 4
+        },
+        "options": { "allMatchingOutputs": false }
+      },
+      "id": "switch-mode",
+      "name": "Switch Modo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "content": "=Você é um classificador de ocorrências urbanas para cidades brasileiras.\nClassifique a seguinte descrição na categoria mais adequada.\n\nCategorias (retorne APENAS o código):\n- LIXO: Lixo, resíduos, entulho, coleta\n- ILUMINACAO: Postes, lâmpadas, escuro\n- BURACO: Buracos, asfalto, calçada\n- AGUA: Vazamento, esgoto, falta d'água\n- VEGETACAO: Mato, árvores, praças\n- TRANSITO: Semáforos, sinalização\n- SEGURANCA: Vandalismo, insegurança\n- ANIMAIS: Abandonados, infestação\n- POLUICAO: Sonora, queimada, fumaça\n- ACESSIBILIDADE: Rampas, obstruções\n- TURISMO: Pontos turísticos\n- OUTROS: Não se enquadra\n\nDescrição: {{ $json.text || $json.imageCaption || 'Sem descrição' }}\n\nResponda APENAS com JSON: {\"categoria\": \"CODIGO\", \"confianca\": 0.95}",
+              "role": "user"
+            }
+          ]
+        },
+        "options": { "temperature": 0.1, "maxTokens": 100 }
+      },
+      "id": "openai-classify",
+      "name": "OpenAI Classificar",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1580, 200],
+      "credentials": { "openAiApi": { "id": "OPENAI_CREDENTIAL_ID", "name": "OpenAI" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parsear resposta do OpenAI\nconst prev = $('Switch Modo').first().json;\nlet categoria = 'OUTROS';\nlet confianca = 0.5;\n\ntry {\n  const raw = $input.item.json.message?.content || $input.item.json.text || '{}';\n  const clean = raw.replace(/```json\\s*/g, '').replace(/```/g, '').trim();\n  const parsed = JSON.parse(clean);\n  categoria = parsed.categoria || 'OUTROS';\n  confianca = parsed.confianca || 0.5;\n} catch(e) {\n  // fallback\n}\n\nreturn {\n  ...prev,\n  categoriaCodigo: categoria,\n  confiancaClassificacao: confianca\n};"
+      },
+      "id": "parse-classification",
+      "name": "Parse Classificação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SPRING_BOOT_URL }}/api/v1/ocorrencias",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"descricao\": \"{{ ($json.text || $json.imageCaption || 'Problema reportado via foto').replace(/\"/g, '\\\\\"') }}\",\n  \"latitude\": {{ $json.latitude || 'null' }},\n  \"longitude\": {{ $json.longitude || 'null' }},\n  \"enderecoTexto\": {{ $json.locationAddress ? '\"' + $json.locationAddress.replace(/\"/g, '\\\\\"') + '\"' : 'null' }},\n  \"fotoUrl\": {{ $json.imageUrl ? '\"' + $json.imageUrl + '\"' : 'null' }},\n  \"gravidade\": \"MEDIA\",\n  \"canal\": \"WHATSAPP_RAPIDO\",\n  \"cidadeId\": {{ $env.CIDADE_PADRAO_ID || 1 }}\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "create-ocorrencia-rapido",
+      "name": "Criar Ocorrência (Rápido)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2020, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Extrair Dados').first().json.phone }}\",\n  \"text\": \"✅ *Ocorrência registrada com sucesso!*\\n\\n📋 Protocolo: *{{ $json.protocolo }}*\\n🏷️ Categoria: {{ $json.categoriaNome || 'Classificando...' }}\\n⚠️ Prioridade: {{ $json.scorePrioridade }}\\n\\nAcompanhe o status enviando o número do protocolo a qualquer momento.\\n\\nObrigado por contribuir com a sua cidade! 🏙️\",\n  \"delay\": 1500\n}",
+        "options": {}
+      },
+      "id": "send-confirmacao-rapido",
+      "name": "Enviar Confirmação (Rápido)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2240, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SPRING_BOOT_URL }}/api/v1/ocorrencias/protocolo/{{ $json.text }}",
+        "options": { "timeout": 5000 }
+      },
+      "id": "consulta-protocolo",
+      "name": "Consultar Protocolo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const prev = $('Extrair Dados').first().json;\nconst resp = $input.item.json;\n\nlet text = '';\n\nif (resp.protocolo) {\n  const statusEmoji = {\n    'RECEBIDA': '📥',\n    'EM_ANALISE': '🔍',\n    'VALIDADA': '✅',\n    'EM_RESOLUCAO': '🔧',\n    'RESOLVIDA': '🎉',\n    'ARQUIVADA': '📦',\n    'REJEITADA': '❌'\n  };\n  const emoji = statusEmoji[resp.status] || '📋';\n  const statusText = (resp.status || '').replace(/_/g, ' ');\n  const data = resp.dataRegistro ? resp.dataRegistro.substring(0, 10) : '—';\n  const desc = resp.descricao ? (resp.descricao.length > 80 ? resp.descricao.substring(0, 80) + '...' : resp.descricao) : '—';\n\n  text = `🔍 *Status do Protocolo ${resp.protocolo}*\\n\\n${emoji} Status: *${statusText}*\\n🏷️ Categoria: ${resp.categoriaNome || '—'}\\n📝 ${desc}\\n📅 Registrado em: ${data}`;\n} else {\n  text = `⚠️ Protocolo *${prev.text}* não encontrado.\\n\\nVerifique o número e tente novamente.\\nFormato correto: RPT-2026-00001`;\n}\n\nreturn { phone: prev.phone, text };"
+      },
+      "id": "format-protocolo",
+      "name": "Formatar Protocolo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": \"{{ $json.text }}\",\n  \"delay\": 1200\n}",
+        "options": {}
+      },
+      "id": "send-protocolo-result",
+      "name": "Enviar Status Protocolo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2020, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": \"📋 *Qual a categoria do problema?*\\n\\n1️⃣ 🗑️ Lixo e Resíduos\\n2️⃣ 💡 Iluminação Pública\\n3️⃣ 🕳️ Buracos e Pavimentação\\n4️⃣ 💧 Água e Esgoto\\n5️⃣ 🌿 Vegetação\\n6️⃣ 🚦 Trânsito e Sinalização\\n7️⃣ 🛡️ Segurança Pública\\n8️⃣ 🐾 Animais\\n9️⃣ 🌫️ Poluição\\n🔟 ♿ Acessibilidade\\n1️⃣1️⃣ 📸 Turismo\\n1️⃣2️⃣ ❓ Outros\\n\\nResponda com o número.\",\n  \"delay\": 1500\n}",
+        "options": {}
+      },
+      "id": "send-categorias",
+      "name": "Enviar Menu Categorias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 600]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": \"🏙️ *Reporte AI - Inteligência Comunitária*\\n\\nOlá, {{ $json.pushName }}! Eu sou o bot do Reporte AI.\\n\\nComo deseja prosseguir?\\n\\n1️⃣ *Reportar problema* (passo a passo)\\n2️⃣ *Modo rápido* (envie foto + localização)\\n3️⃣ *Consultar protocolo*\\n4️⃣ *Ajuda*\\n\\nResponda com o número.\",\n  \"delay\": 1500\n}",
+        "options": {}
+      },
+      "id": "send-menu-principal",
+      "name": "Menu Principal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 800]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EVOLUTION_BASE_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Extrair Dados').first().json.phone }}\",\n  \"text\": \"✅ Registro confirmado! Processando sua ocorrência...\\n\\nVocê receberá o protocolo em instantes.\",\n  \"delay\": 1000\n}",
+        "options": {}
+      },
+      "id": "send-confirmacao-sim",
+      "name": "Confirmar Sim",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 1000]
+    }
+  ],
+  "connections": {
+    "Webhook Evolution": { "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]] },
+    "Respond 200": { "main": [[{ "node": "Filtrar Msgs Válidas", "type": "main", "index": 0 }]] },
+    "Filtrar Msgs Válidas": { "main": [[{ "node": "Extrair Dados", "type": "main", "index": 0 }]] },
+    "Extrair Dados": { "main": [[{ "node": "Reagir ✅", "type": "main", "index": 0 }]] },
+    "Reagir ✅": { "main": [[{ "node": "Switch Modo", "type": "main", "index": 0 }]] },
+    "Switch Modo": {
+      "main": [
+        [{ "node": "OpenAI Classificar", "type": "main", "index": 0 }],
+        [{ "node": "Consultar Protocolo", "type": "main", "index": 0 }],
+        [{ "node": "Enviar Menu Categorias", "type": "main", "index": 0 }],
+        [{ "node": "Confirmar Sim", "type": "main", "index": 0 }],
+        [{ "node": "Menu Principal", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenAI Classificar": { "main": [[{ "node": "Parse Classificação", "type": "main", "index": 0 }]] },
+    "Parse Classificação": { "main": [[{ "node": "Criar Ocorrência (Rápido)", "type": "main", "index": 0 }]] },
+    "Criar Ocorrência (Rápido)": { "main": [[{ "node": "Enviar Confirmação (Rápido)", "type": "main", "index": 0 }]] },
+    "Consultar Protocolo": { "main": [[{ "node": "Formatar Protocolo", "type": "main", "index": 0 }]] },
+    "Formatar Protocolo": { "main": [[{ "node": "Enviar Status Protocolo", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [{ "name": "Reporte AI" }, { "name": "WhatsApp" }, { "name": "Evolution API" }],
+  "triggerCount": 1,
+  "pinData": {}
+}

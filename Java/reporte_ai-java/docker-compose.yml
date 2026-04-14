@@ -15,7 +15,7 @@ services:
     networks:
       - reporteai_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U reporteai"]
+      test: ["CMD-SHELL", "pg_isready -U reporteai -d reporteai_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,6 +32,24 @@ services:
       - reporteai_network
     depends_on:
       - postgres
+
+
+  reporte-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reporte-api
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/reporteai_db
+      SPRING_DATASOURCE_USERNAME: reporteai
+      SPRING_DATASOURCE_PASSWORD: reporteai
+    networks:
+      - reporteai_network
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

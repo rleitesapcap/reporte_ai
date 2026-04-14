@@ -1,0 +1,126 @@
+{
+  "name": "Reporte AI - Bot WhatsApp (Evolution API)",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "evolution-whatsapp", "responseMode": "responseNode", "options": {} },
+      "id": "a1000001-0001-4001-8001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": { "respondWith": "noData", "options": {} },
+      "id": "a1000001-0002-4002-8002-000000000002",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst data = body.data || {};\nconst msg = data.message || {};\nconst key = data.key || {};\n\nif (body.event !== 'messages.upsert' || key.fromMe === true) return [];\n\nconst phone = (key.remoteJid || '').replace('@s.whatsapp.net', '').replace('@lid', '');\nif (!phone) return [];\n\nlet text = msg.conversation || '';\nif (!text && msg.extendedTextMessage) text = msg.extendedTextMessage.text || '';\nif (!text && msg.imageMessage) text = msg.imageMessage.caption || '';\nif (!text && msg.listResponseMessage && msg.listResponseMessage.singleSelectReply) text = msg.listResponseMessage.singleSelectReply.selectedRowId || '';\nif (!text && msg.buttonsResponseMessage) text = msg.buttonsResponseMessage.selectedButtonId || '';\ntext = text.trim();\n\nconst hasLoc = !!(msg.locationMessage);\nconst hasImg = !!(msg.imageMessage);\n\nlet mode = 'menu';\nif (hasImg && (hasLoc || text)) mode = 'rapido';\nelse if (text.match(/^RPT-\\d{4}-\\d{5}$/i)) mode = 'protocolo';\nelse if (/^([1-9]|1[0-2])$/.test(text)) mode = 'categoria';\nelse if (/^(sim|s)$/i.test(text)) mode = 'confirmar';\n\nreturn {\n  phone, pushName: data.pushName || 'Cidadao', text, mode,\n  msgId: key.id || '', remoteJid: key.remoteJid || '',\n  hasImage: hasImg,\n  imageUrl: hasImg ? (msg.imageMessage.mediaUrl || msg.imageMessage.url || '') : '',\n  imageCaption: hasImg ? (msg.imageMessage.caption || '') : '',\n  hasLocation: hasLoc,\n  latitude: hasLoc ? msg.locationMessage.degreesLatitude : null,\n  longitude: hasLoc ? msg.locationMessage.degreesLongitude : null,\n  locationAddress: hasLoc ? (msg.locationMessage.address || '') : ''\n};"
+      },
+      "id": "a1000001-0003-4003-8003-000000000003",
+      "name": "Extrair Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_BASE_URL || 'http://localhost:8080' }}/message/sendReaction/{{ $env.EVOLUTION_INSTANCE || 'reporteai' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"key\":{\"remoteJid\":\"{{ $json.remoteJid }}\",\"fromMe\":false,\"id\":\"{{ $json.msgId }}\"},\"reaction\":\"\\u2705\"}",
+        "options": { "timeout": 5000 }
+      },
+      "id": "a1000001-0004-4004-8004-000000000004",
+      "name": "Reagir",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 400],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $input.item.json;\nconst EVO = ($env.EVOLUTION_BASE_URL || 'http://localhost:8080') + '/message/sendText/' + ($env.EVOLUTION_INSTANCE || 'reporteai');\nconst API = $env.SPRING_BOOT_URL || 'http://localhost:8081';\nconst KEY = $env.EVOLUTION_API_KEY || '';\n\nlet step = 'send'; let url = EVO; let method = 'POST';\nlet headers = { apikey: KEY, 'Content-Type': 'application/json' };\nlet bodyObj = {};\n\nif (d.mode === 'menu') {\n  bodyObj = { number: d.phone, text: '\\ud83c\\udfd9\\ufe0f *Reporte AI*\\n\\nOla, ' + d.pushName + '!\\n\\n1 Reportar problema\\n2 Modo rapido (foto+local)\\n3 Consultar protocolo\\n4 Ajuda\\n\\nResponda com o numero.', delay: 1500 };\n} else if (d.mode === 'categoria') {\n  bodyObj = { number: d.phone, text: '*Categoria do problema?*\\n\\n1 Lixo\\n2 Iluminacao\\n3 Buracos\\n4 Agua/Esgoto\\n5 Vegetacao\\n6 Transito\\n7 Seguranca\\n8 Animais\\n9 Poluicao\\n10 Acessibilidade\\n11 Turismo\\n12 Outros\\n\\nResponda com o numero.', delay: 1500 };\n} else if (d.mode === 'confirmar') {\n  bodyObj = { number: d.phone, text: '\\u2705 Confirmado! Processando...', delay: 1000 };\n} else if (d.mode === 'protocolo') {\n  step = 'consulta'; url = API + '/api/v1/ocorrencias/protocolo/' + encodeURIComponent(d.text);\n  method = 'GET'; headers = { 'Content-Type': 'application/json' }; bodyObj = null;\n} else if (d.mode === 'rapido') {\n  step = 'criar'; url = API + '/api/v1/ocorrencias'; method = 'POST';\n  headers = { 'Content-Type': 'application/json' };\n  bodyObj = { descricao: d.text || d.imageCaption || 'Problema via foto', latitude: d.latitude, longitude: d.longitude, enderecoTexto: d.locationAddress || null, fotoUrl: d.imageUrl || null, gravidade: 'MEDIA', canal: 'WHATSAPP_RAPIDO', cidadeId: parseInt($env.CIDADE_PADRAO_ID || '1') };\n}\n\nreturn { _step: step, _phone: d.phone, _evoUrl: EVO, _evoKey: KEY, _method: method, _url: url, _headers: headers, _body: bodyObj ? JSON.stringify(bodyObj) : '' };"
+      },
+      "id": "a1000001-0005-4005-8005-000000000005",
+      "name": "Preparar Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "method": "={{ $json._method }}",
+        "url": "={{ $json._url }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "={{ $json._headers.apikey || '' }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json._body || '{}' }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "a1000001-0006-4006-8006-000000000006",
+      "name": "Executar Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 400],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const prev = $('Preparar Request').first().json;\nconst resp = $input.item.json;\nconst step = prev._step;\n\nif (step === 'send') return [];\n\nconst phone = prev._phone; let text = '';\n\nif (step === 'consulta') {\n  if (resp.protocolo) {\n    const e = {RECEBIDA:'\\ud83d\\udce5',EM_ANALISE:'\\ud83d\\udd0d',VALIDADA:'\\u2705',EM_RESOLUCAO:'\\ud83d\\udd27',RESOLVIDA:'\\ud83c\\udf89',ARQUIVADA:'\\ud83d\\udce6',REJEITADA:'\\u274c'};\n    const s = (resp.status||'').replace(/_/g,' ');\n    const desc = resp.descricao && resp.descricao.length > 80 ? resp.descricao.substring(0,80)+'...' : (resp.descricao||'-');\n    text = (e[resp.status]||'') + ' *' + resp.protocolo + '*\\n\\nStatus: *' + s + '*\\nCategoria: ' + (resp.categoriaNome||'-') + '\\n' + desc;\n  } else { text = '\\u26a0\\ufe0f Protocolo nao encontrado. Formato: RPT-2026-00001'; }\n} else if (step === 'criar') {\n  text = '\\u2705 *Ocorrencia registrada!*\\n\\nProtocolo: *' + (resp.protocolo||'N/A') + '*\\nCategoria: ' + (resp.categoriaNome||'Classificando...') + '\\nPrioridade: ' + (resp.scorePrioridade||'0') + '\\n\\nObrigado!';\n}\n\nreturn { _url: prev._evoUrl, _key: prev._evoKey, _body: JSON.stringify({number:phone,text:text,delay:1200}) };"
+      },
+      "id": "a1000001-0007-4007-8007-000000000007",
+      "name": "Formatar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._url }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "={{ $json._key }}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json._body }}",
+        "options": {}
+      },
+      "id": "a1000001-0008-4008-8008-000000000008",
+      "name": "Enviar Resposta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{"node":"Respond OK","type":"main","index":0}]] },
+    "Respond OK": { "main": [[{"node":"Extrair Dados","type":"main","index":0}]] },
+    "Extrair Dados": { "main": [[{"node":"Reagir","type":"main","index":0}]] },
+    "Reagir": { "main": [[{"node":"Preparar Request","type":"main","index":0}]] },
+    "Preparar Request": { "main": [[{"node":"Executar Request","type":"main","index":0}]] },
+    "Executar Request": { "main": [[{"node":"Formatar Resposta","type":"main","index":0}]] },
+    "Formatar Resposta": { "main": [[{"node":"Enviar Resposta","type":"main","index":0}]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
