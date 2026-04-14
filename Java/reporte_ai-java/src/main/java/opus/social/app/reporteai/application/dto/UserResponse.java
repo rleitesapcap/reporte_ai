@@ -3,8 +3,23 @@ package opus.social.app.reporteai.application.dto;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.math.BigDecimal;
+import opus.social.app.reporteai.infrastructure.persistence.entity.AuthUserJpaEntity;
 
 public class UserResponse {
+
+    public static UserResponse from(AuthUserJpaEntity entity) {
+        return new UserResponse(
+            entity.getId(),
+            entity.getUsername(),
+            entity.getFullName(),
+            entity.getEmail(),
+            null,
+            0,
+            entity.getIsActive(),
+            entity.getCreatedAt(),
+            entity.getUpdatedAt()
+        );
+    }
     private UUID id;
     private String phoneNumber;
     private String name;

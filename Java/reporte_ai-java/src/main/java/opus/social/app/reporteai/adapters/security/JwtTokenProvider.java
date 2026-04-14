@@ -2,6 +2,8 @@ package opus.social.app.reporteai.adapters.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +19,8 @@ import java.util.Map;
  */
 @Component
 public class JwtTokenProvider {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
 
     @Value("${app.jwtSecret:mySecureSecretKeyForJWTTokenGenerationAndValidation123456}")
     private String jwtSecret;
@@ -95,15 +99,17 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token);
             return true;
         } catch (SecurityException ex) {
-            System.err.println("Chave de assinatura JWT inválida: " + ex);
+            logger.warn("Invalid JWT signature");
         } catch (MalformedJwtException ex) {
-            System.err.println("Token JWT inválido: " + ex);
+            logger.warn("Invalid JWT format");
         } catch (ExpiredJwtException ex) {
-            System.err.println("Token JWT expirado: " + ex);
+            logger.debug("JWT token has expired");
         } catch (UnsupportedJwtException ex) {
-            System.err.println("Token JWT não suportado: " + ex);
+            logger.warn("Unsupported JWT token");
         } catch (IllegalArgumentException ex) {
-            System.err.println("String JWT vazia: " + ex);
+            logger.warn("Empty JWT string");
+        } catch (Exception ex) {
+            logger.error("Unexpected error during token validation", ex);
         }
         return false;
     }

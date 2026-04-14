@@ -1,7 +1,16 @@
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\adapters\config\CacheConfigTest.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\application\service\UserApplicationServiceTest.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\adapters\http\controller\AuthControllerIntegrationTest.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\application\service\OccurrenceApplicationServiceTest.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\application\service\AuthUserApplicationServiceTest.java
-F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\infrastructure\persistence\adapter\EmployeeRepositoryAdapterTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\domain\event\EventSourcingTest.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\adapters\http\controller\EmployeeControllerTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\application\bus\QueryBusTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\performance\PerformanceBenchmarkTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\domain\specification\SpecificationPatternTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\application\saga\SagaPatternTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\integration\DesignPatternsIntegrationTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\infrastructure\persistence\adapter\EmployeeRepositoryAdapterTest.java
 F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\application\service\EmployeeApplicationServiceTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\application\service\CircuitBreakerServiceTest.java
+F:\Documentos-Renato\Documentos\Renato\PROJETO-AI\Reporte AI\Java\reporte_ai-java\src\test\java\opus\social\app\reporteai\application\bus\CommandBusTest.java

@@ -1,27 +1,36 @@
 package opus.social.app.reporteai.application.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+import jakarta.validation.groups.Default;
 
 /**
  * DTO para requisição de registro de novo usuário
+ * Implementa validações rigorosas de segurança
  */
 public class RegisterRequest {
-    
+
     @NotBlank(message = "Username é obrigatório")
-    @Size(min = 3, max = 100, message = "Username deve ter entre 3 e 100 caracteres")
+    @Size(min = 3, max = 50, message = "Username deve ter entre 3 e 50 caracteres")
+    @Pattern(
+        regexp = "^[a-zA-Z0-9._-]+$",
+        message = "Username contém caracteres inválidos. Apenas letras, números, ponto, underscore e hífen são permitidos"
+    )
     private String username;
 
     @NotBlank(message = "Email é obrigatório")
     @Email(message = "Email deve ser válido")
+    @Size(max = 255, message = "Email não pode exceder 255 caracteres")
     private String email;
 
     @NotBlank(message = "Senha é obrigatória")
-    @Size(min = 6, max = 255, message = "Senha deve ter entre 6 e 255 caracteres")
+    @Size(min = 12, max = 128, message = "Senha deve ter entre 12 e 128 caracteres")
+    @Pattern(
+        regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!*()\\[\\]{};:'\",.<>?/\\\\|`~-])(?=\\S+$).*$",
+        message = "Senha deve conter: números, letras minúsculas, maiúsculas e símbolos especiais (@#$%^&+=!*[]{})"
+    )
     private String password;
 
-    @NotBlank(message = "Confirma senha é obrigatório")
+    @NotBlank(message = "Confirmação de senha é obrigatória")
     private String passwordConfirm;
 
     @NotBlank(message = "Nome completo é obrigatório")
@@ -36,6 +45,18 @@ public class RegisterRequest {
         this.password = password;
         this.passwordConfirm = passwordConfirm;
         this.fullName = fullName;
+    }
+
+    // Validação customizada: senhas devem corresponder
+    @AssertTrue(
+        message = "Senhas não correspondem",
+        groups = {Default.class}
+    )
+    public boolean isPasswordMatching() {
+        if (password == null || passwordConfirm == null) {
+            return false;
+        }
+        return password.equals(passwordConfirm);
     }
 
     public String getUsername() { return username; }

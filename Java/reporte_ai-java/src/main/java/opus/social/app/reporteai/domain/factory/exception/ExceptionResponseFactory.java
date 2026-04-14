@@ -40,6 +40,15 @@ public class ExceptionResponseFactory {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
+    public Map<String, Object> createGenericErrorResponse(String errorCode, String message) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        errorResponse.put("error", errorCode);
+        errorResponse.put("message", message);
+        errorResponse.put("timestamp", LocalDateTime.now());
+        return errorResponse;
+    }
+
     private ResponseEntity<Object> createDefaultErrorResponse(Exception exception) {
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());

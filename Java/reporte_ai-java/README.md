@@ -260,7 +260,7 @@ mvn test
 mvn spring-boot:run
 ```
 
-A aplicação estará disponível em `http://localhost:8080`.
+A aplicação estará disponível em `http://localhost:8082`.
 
 ---
 
@@ -308,7 +308,7 @@ Todos os demais endpoints requerem token JWT válido.
 
 ### CORS
 
-Origens permitidas: `localhost:3000`, `localhost:4200`, `localhost:8080`, `localhost:5173`
+Origens permitidas: `localhost:3000`, `localhost:4200`, `localhost:8082`, `localhost:5173`
 
 ### Rate Limiting
 
@@ -318,7 +318,7 @@ Controle de taxa de requisições por usuário via **Bucket4j**.
 
 ## Endpoints da API REST
 
-**Base URL:** `http://localhost:8080/api/v1`
+**Base URL:** `http://localhost:8082/api/v1`
 
 **Totais:** 97 endpoints (POST: 26 | GET: 48 | PUT: 14 | DELETE: 9) — 4 públicos, 93 protegidos.
 
@@ -512,8 +512,8 @@ Com a aplicação em execução:
 
 | Recurso | URL |
 |---|---|
-| Swagger UI | `http://localhost:8080/swagger-ui.html` |
-| OpenAPI JSON | `http://localhost:8080/v3/api-docs` |
+| Swagger UI | `http://localhost:8082/swagger-ui.html` |
+| OpenAPI JSON | `http://localhost:8082/v3/api-docs` |
 
 ---
 
@@ -522,7 +522,7 @@ Com a aplicação em execução:
 ### 1. Registrar usuário
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/register \
+curl -X POST http://localhost:8082/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "João Silva",
@@ -535,7 +535,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 ### 2. Fazer login e obter token
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
+curl -X POST http://localhost:8082/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "joao@example.com",
@@ -546,7 +546,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 ### 3. Usar token nos endpoints protegidos
 
 ```bash
-curl http://localhost:8080/api/v1/occurrences \
+curl http://localhost:8082/api/v1/occurrences \
   -H "Authorization: Bearer <seu_token_aqui>"
 ```
 

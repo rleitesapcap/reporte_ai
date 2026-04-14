@@ -1,7 +1,7 @@
 app:
-  jwtSecret: mySecureSecretKeyForJWTTokenGenerationAndValidation123456789SuperSecure
-  jwtExpirationInMs: 86400000  # 24 horas
-  jwtRefreshExpirationInMs: 604800000  # 7 dias
+  jwtSecret: ${JWT_SECRET:change-me-in-production-minimum-32-characters-required}
+  jwtExpirationInMs: ${JWT_EXPIRATION_MS:86400000}  # 24 horas
+  jwtRefreshExpirationInMs: ${JWT_REFRESH_EXPIRATION_MS:604800000}  # 7 dias
 
 spring:
   application:
@@ -18,10 +18,16 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/reporteai_db
-    username: reporteai
-    password: reporteai
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/reporteai_db}
+    username: ${SPRING_DATASOURCE_USERNAME:reporteai}
+    password: ${SPRING_DATASOURCE_PASSWORD:reporteai}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   flyway:
     enabled: true
@@ -38,6 +44,14 @@ server:
   port: 8082
   servlet:
     context-path: /
+  error:
+    include-message: on_param
+    include-binding-errors: on_param
+    include-stacktrace: never
+    include-exception: false
+  compression:
+    enabled: true
+    min-response-size: 1024
 
 springdoc:
   swagger-ui:
@@ -48,10 +62,27 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
 logging:
   level:
     root: INFO
-    opus.social.app.reporteai: DEBUG
-    org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    opus.social.app.reporteai: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+  file:
+    name: /var/log/reporteai/app.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

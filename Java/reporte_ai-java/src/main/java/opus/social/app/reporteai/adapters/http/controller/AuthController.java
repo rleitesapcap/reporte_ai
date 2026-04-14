@@ -3,6 +3,7 @@ package opus.social.app.reporteai.adapters.http.controller;
 import opus.social.app.reporteai.adapters.security.JwtTokenProvider;
 import opus.social.app.reporteai.application.dto.RegisterRequest;
 import opus.social.app.reporteai.application.service.AuthUserApplicationService;
+import opus.social.app.reporteai.application.service.AuditLogApplicationService;
 import opus.social.app.reporteai.application.service.TokenBlacklistService;
 import opus.social.app.reporteai.infrastructure.persistence.entity.AuthUserJpaEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,16 +36,19 @@ public class AuthController {
     private final JwtTokenProvider tokenProvider;
     private final AuthUserApplicationService authUserService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final AuditLogApplicationService auditLogService;
 
     public AuthController(
             AuthenticationManager authenticationManager,
             JwtTokenProvider tokenProvider,
             AuthUserApplicationService authUserService,
-            TokenBlacklistService tokenBlacklistService) {
+            TokenBlacklistService tokenBlacklistService,
+            AuditLogApplicationService auditLogService) {
         this.authenticationManager = authenticationManager;
         this.tokenProvider = tokenProvider;
         this.authUserService = authUserService;
         this.tokenBlacklistService = tokenBlacklistService;
+        this.auditLogService = auditLogService;
     }
 
     /**
@@ -209,13 +213,14 @@ public class AuthController {
         @ApiResponse(responseCode = "401", description = "Usuário não autenticado")
     })
     public ResponseEntity<?> logout(@RequestHeader("Authorization") String bearerToken) {
+        String username = null;
         try {
             if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
                 String token = bearerToken.substring(7);
 
                 // Validar e extrair informações do token
                 if (tokenProvider.validateToken(token)) {
-                    String username = tokenProvider.getUsernameFromToken(token);
+                    username = tokenProvider.getUsernameFromToken(token);
                     AuthUserJpaEntity user = authUserService.getUserByUsername(username);
 
                     // Adicionar token ao blacklist
@@ -226,6 +231,11 @@ public class AuthController {
                         tokenProvider.getExpirationDateFromToken(token).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
                     );
                 }
+            }
+
+            // Registrar logout para auditoria
+            if (username != null) {
+                auditLogService.logLogout(username);
             }
 
             // Limpar contexto de segurança
